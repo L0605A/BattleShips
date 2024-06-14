@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 
 
-class BattleshipGame:
+class Tinktering:
     def __init__(self, master):
 
         self.master = master
@@ -32,7 +32,7 @@ class BattleshipGame:
         self.player1_board = [[' '] * 10 for _ in range(10)]
         self.player2_board = [[' '] * 10 for _ in range(10)]
 
-        #Initialised deployed ships
+        # Initialised deployed ships
         self.deployed_ships = {1: {ship: 0 for ship in self.ships_info}, 2: {ship: 0 for ship in self.ships_info}}
 
         # Start on player 1
@@ -53,7 +53,7 @@ class BattleshipGame:
         # Make the frame
         self.board_frames = [tk.Frame(self.master) for _ in range(2)]
         for i, frame in enumerate(self.board_frames):
-            frame.grid(row=0, column = 2 * i + 1)
+            frame.grid(row=0, column=2 * i + 1)
 
         # Make buttons for each space
         self.buttons = [[None for _ in range(10)] for _ in range(2)]
@@ -77,6 +77,10 @@ class BattleshipGame:
                             height=2,
                             command=lambda r=row - 1, c=col - 1, p=player: self.on_button_click(r, c, p)
                         )
+                        button.bind("<Enter>",
+                                    lambda e, r=row - 1, c=col - 1, p=player: self.button_hovered(r, c, p, True))
+                        button.bind("<Leave>",
+                                    lambda e, r=row - 1, c=col - 1, p=player: self.button_hovered(r, c, p, False))
                         button.grid(row=row, column=col)
                         self.buttons[player][row - 1] = self.buttons[player][row - 1] or []
                         self.buttons[player][row - 1].append(button)
@@ -85,7 +89,6 @@ class BattleshipGame:
         self.ship_buttons = {}
 
         for i, (ship, size) in enumerate(self.ships_info.items()):
-
             # Buttons for plater one
             button1 = tk.Button(
                 self.master,
@@ -172,7 +175,8 @@ class BattleshipGame:
             self.ship_buttons[(self.current_turn, self.current_ship)].config(state='disabled')
 
         # For both players, if all the ships are placed, enable em to press deploy button
-        if all(self.deployed_ships[self.current_turn][ship] == self.ships_amount[ship] for ship in self.deployed_ships[self.current_turn]):
+        if all(self.deployed_ships[self.current_turn][ship] == self.ships_amount[ship] for ship in
+               self.deployed_ships[self.current_turn]):
             if self.current_turn == 1:
                 self.deploy_button1.config(state='normal')
             else:
@@ -214,7 +218,6 @@ class BattleshipGame:
             self.deploy_button2.config(state='disabled')
             if all(self.deployed_ships[1][ship] == self.ships_amount[ship] for ship in self.ships_info) and all(
                     self.deployed_ships[2][ship] == self.ships_amount[ship] for ship in self.ships_info):
-
                 # Move to the actual game
                 self.phase = 2
 
@@ -223,6 +226,53 @@ class BattleshipGame:
 
                 # Prepare the boards in all their glory
                 self.show_game_boards()
+
+    def button_hovered(self, row, col, player, isHovered):
+        if isHovered:
+            empty_color = "gray"
+            ship_color = "red"
+        else:
+            empty_color = "white"
+            ship_color = "gray"
+        # get current player board
+        board = self.player1_board if player == 0 else self.player2_board
+
+        # working only if player selected a ship to place
+        if self.current_ship is not None:
+            # Get the size of the ship that's gon be placed
+            size = self.ships_info[self.current_ship]
+            # case for horizontal placement
+            if self.ship_orientation == "H":
+                # if ship is too long or overlays another, display it with a red color, but only when hovering
+                if col + size > 10:
+                    if isHovered:
+                        empty_color = "red"
+                    else:
+                        empty_color = "white"
+                    if col + size > 10:
+                        size = 10-col
+                # color the tiles of the ship
+                for i in range(size):
+                    if board[row][col+i] != ' ':
+                        self.buttons[player][row][col+i].configure(bg=ship_color)
+                    else:
+                        self.buttons[player][row][col+i].configure(bg=empty_color)
+            # case for vertical placement
+            else:
+                # if ship is too long or overlays another, display it with a red color, but only when hovering
+                if row + size > 10:
+                    if isHovered:
+                        empty_color = "red"
+                    else:
+                        empty_color = "white"
+                    if row + size > 10:
+                        size = 10-row
+                # color the tiles of the ship
+                for i in range(size):
+                    if board[row+i][col] != ' ':
+                        self.buttons[player][row+i][col].configure(bg=ship_color)
+                    else:
+                        self.buttons[player][row+i][col].configure(bg=empty_color)
 
     def on_button_click(self, row, col, player):
 
@@ -267,5 +317,5 @@ class BattleshipGame:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    game = BattleshipGame(root)
+    game = Tinktering(root)
     root.mainloop()
