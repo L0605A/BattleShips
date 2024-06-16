@@ -319,3 +319,51 @@ if __name__ == "__main__":
     root = tk.Tk()
     game = Tinktering(root)
     root.mainloop()
+
+
+    def button_hovered(self, row, col, isHovered):
+        if isHovered:
+            empty_color = "gray"
+            ship_color = "red"
+        else:
+            empty_color = "white"
+            ship_color = "gray"
+        # get current player board
+        board = self.player_board
+
+        # working only if player selected a ship to place
+        if self.current_ship is not None:
+            # Get the size of the ship that's gon be placed
+            size = self.game.ships_info[self.current_ship]
+            # case for horizontal placement
+            if self.ship_orientation == "H":
+                # if ship is too long or overlays another, display it with a red color, but only when hovering
+                if col + size > 10:
+                    if isHovered:
+                        empty_color = "red"
+                    else:
+                        empty_color = "white"
+                    if col + size > 10:
+                        size = 10 - col
+                # color the tiles of the ship
+                for i in range(size):
+                    if board[row][col + i] != ' ':
+                        self.own_buttons[row][col + i].configure(bg=ship_color)
+                    else:
+                        self.own_buttons[row][col + i].configure(bg=empty_color)
+            # case for vertical placement
+            else:
+                # if ship is too long or overlays another, display it with a red color, but only when hovering
+                if row + size > 10:
+                    if isHovered:
+                        empty_color = "red"
+                    else:
+                        empty_color = "white"
+                    if row + size > 10:
+                        size = 10 - row
+                # color the tiles of the ship
+                for i in range(size):
+                    if board[row + i][col] != ' ':
+                        self.own_buttons[row + i][col].configure(bg=ship_color)
+                    else:
+                        self.own_buttons[row + i][col].configure(bg=empty_color)

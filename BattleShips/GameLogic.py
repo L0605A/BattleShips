@@ -42,6 +42,11 @@ class GameLogic:
         self.player1 = client.PlayerInstance("Player 1", self)
         self.player2 = client.PlayerInstance("Player 2", self)
 
+        image = tk.PhotoImage(file="./sprites/TileWater.png")
+        image = image.zoom(3, 3)
+        img = tk.Label(self.master, image=image)
+        # img.pack()
+
         self.master.mainloop()
 
     def check_ready(self):
@@ -58,8 +63,20 @@ class GameLogic:
             self.player1.current_player = True
             self.player2.current_player = False
 
-    def start_game(self):
+    def receive(self, player, row, col, info):
+        # target player is the enemy of the player who sent the info
+        if player == self.player1:
+            target = self.player2
+        else:
+            target = self.player1
+        # there is no other info cause of the return values. If we ere operating on Kafka,
+        # the other type would be hit/miss or win
+        if info == "fire":
+            hit = target.receive_shot(row, col)
+            print(hit)
+            return hit
 
+    def start_game(self):
         # easier way of setting the first turn :)
         self.current_turn = 2
         self.next_turn()
