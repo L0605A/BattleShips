@@ -1,5 +1,6 @@
 from kafka import KafkaProducer, KafkaConsumer
 import json
+import threading  # Import threading module
 
 topic = 'game'
 
@@ -17,8 +18,13 @@ class MessageProducer:
         self.producer.flush()
 
 
-class MessageConsumer:
+class MessageConsumer(threading.Thread):  # Subclass threading.Thread
+
+    player = None
+    received_message = None
+
     def __init__(self, topic, group_id, servers='localhost:9092'):
+        super().__init__()  # Initialize the thread
         self.consumer = KafkaConsumer(
             topic,
             bootstrap_servers=servers,
@@ -27,29 +33,38 @@ class MessageConsumer:
             key_deserializer=lambda k: k.decode('utf-8'),
             value_deserializer=lambda v: json.loads(v.decode('utf-8'))
         )
+        #self.player = None
+        #self.received_message = None
+        self.stop_event = threading.Event()  # Event to signal stop
 
-        self.player = None
-        self.received_message = None
+    def run(self):
 
-    def consume(self):
-        print("consuming")
-        try:
-            print("try")
-            msg_pack = self.consumer.poll(timeout_ms=1000)
-            for tp, message in msg_pack.items():
-                for msg in self.consumer:
-                    print("in kafka")
-                    self.player = msg.key
-                    self.received_message = msg.value
-                    print(f"Consumed message: key={msg.key}, value={msg.value}")
-                    return
+        print("Consumer thread started")
 
-            print("Nothing recieved")
-        except KeyboardInterrupt:
-            print("catch")
-            pass
-        finally:
-            self.consumer.close()
+        while not self.stop_event.is_set():
+            try:
+                while not self.stop_event.is_set():
+                    msg_pack = self.consumer.poll(timeout_ms=1000)
+                    for tp, msg in msg_pack.items():
+                        #print(tp)
+                        msg = msg[0]
+                        #print(msg)
+
+                        MessageConsumer.player = msg.key
+                        MessageConsumer.received_message = msg.value
+
+                        #print(self.player)
+                        #print(MessageConsumer.player)
+                        #print(f"Consumed message: key={msg.key}, value={msg.value}")
+                    self.consumer.commit()  # Commit offsets if needed
+            except Exception as e:
+                print(f"Exception in consumer thread: {e}")
+            finally:
+                #self.consumer.close()
+                print("Consumer thread stopped")
+
+    def stop(self):
+        self.stop_event.set()  # Set the event to stop the consumer
 
 
 def kafkaSend(player, message):
@@ -57,10 +72,18 @@ def kafkaSend(player, message):
     producer.send(topic, key=player, value=message)
 
 
-def kafkaRecieve():
-    print("Entered receiving")
+def kafkaReceive():
+    #print("Entered receiving")
     consumer = MessageConsumer(topic, group_id='test_group')
-    print("Made consumer")
-    consumer.consume()
-    print("Consumed message")
-    return {"Player": consumer.player, "Move": consumer.received_message}
+    consumer.start()  # Start the consumer thread
+    # Optionally, you can wait for the thread to finish or continue doing other work
+    # consumer.join()  # Uncomment if you want to wait for consumer thread to finish
+    return consumer
+
+
+# Example usage:
+# Do other work here while consumer is running in the background
+# consumer_thread.join()  # Optionally wait for consumer thread to finish
+
+# To stop the consumer thread at some point:
+# consumer_thread.stop()

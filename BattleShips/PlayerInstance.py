@@ -1,7 +1,9 @@
+import sys
 import tkinter as tk
 import KafkaTesting as kafka
 from tkinter import messagebox
 
+import GameLogic
 
 
 def get_image(path):
@@ -34,6 +36,8 @@ class PlayerInstance:
 
         # Show window name
         self.master.title("Battleships: " + player_name)
+
+        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # Initialise boards
         self.player_board = [[' '] * 10 for _ in range(10)]
@@ -242,7 +246,7 @@ class PlayerInstance:
                     button.grid(row=row, column=col+15)
                     self.enemy_buttons[row - 1] = self.enemy_buttons[row - 1] or []
                     self.enemy_buttons[row - 1].append(button)
-        print("displayed enemy board")
+        #print("displayed enemy board")
 
     def show_game_boards(self):
         # Enable all buttons
@@ -264,52 +268,72 @@ class PlayerInstance:
                     widget.config(text='')
 
     def start_game(self):
-        print("starting the game for " + self.player_name)
+        #print("starting the game for " + self.player_name)
         self.display_enemy_bard()
         # here should be Supplier loop, so we can get hit/miss and shots info from the other player
         # within here, we access update_enemy_board and receive_shot methods depending on the message received
-        print("to check")
+        #print("to check")
         self.check_for_messages()
 
 
     def check_for_messages(self):
-        print("waiting for kafka..")
-        messageData = kafka.kafkaRecieve()
+        #print("waiting for kafka..")
+        #kafka.kafkaReceive()
+        messageData = {"Player": kafka.MessageConsumer.player, "Move": kafka.MessageConsumer.received_message}
+        #print(messageData)
 
         if messageData and messageData["Player"] and messageData["Move"]:
 
             player = messageData["Player"]
             move = messageData["Move"].split(";")
 
-            print("Message received: player: " + player + " move: " + move)
+            #print("Message received: player: " + player + " move: " + messageData["Move"])
 
             move_cmd = move[0]
             move_row = int(move[1])
             move_col = int(move[2])
 
             if player != self.player_name:
-                if move_cmd == "WIN":
-                    messagebox.showinfo("Game Over", f"Player {player} wins!")
-                    # display who won
-                elif move_cmd.startsWith("HIT"):
-                    # modify our board accordingly
+                if move_cmd.startswith("WIN"):
                     self.update_enemy_board(True, move_row, move_col)
-                elif move_cmd.startsWith("MISS"):
+                    messagebox.showinfo("Game Over", f"{self.player_name} wins!")
+                    self.on_closing()
+                    # display who won
+                elif move_cmd.startswith("HIT"):
                     # modify our board accordingly
+                    #self.player_board[move_row][move_col] = '*'
+                    self.update_enemy_board(True, move_row, move_col)
+                elif move_cmd.startswith("MISS"):
+                    # modify our board accordingly
+                    #self.player_board[move_row][move_col] = '~'
                     self.update_enemy_board(False, move_row, move_col)
-                elif move_cmd.startsWith("SHOT"):
+                elif move_cmd.startswith("SHOT"):
+                    #print(self.player_name + " CAN MOVE")
+                    self.current_turn = True
                     # Recieved info
+                    #print("RECEIVED SHOT CMD")
                     self.own_buttons[move_row][move_col].config(state='disabled')
+                    #print("SETTING SHOT VALUE")
                     val = self.player_board[move_row][move_col] != ' '
+                    #print("DECIDING RESPONSE CMD")
                     cmd = "HIT" if val else "MISS"
+                    if val:
+                        self.player_board[move_row][move_col] = '*'
+                    else:
+                        self.player_board[move_row][move_col] = '~'
+                    print(self.player_board)
                     if self.check_win():
+                        print("won")
                         cmd = "WIN"
-                    kafka.kafkaSend(self.player_name, cmd + ";" + move_row + ";" + move_col)
+                    #print("SENDING RESPONSE CMD")
+                    kafka.kafkaSend(self.player_name, cmd + ";" + str(move_row) + ";" + str(move_col))
+                    #print("SENT RESPONSE CMD")
             else:
-                print("No message")
+                1
+                #print("No message")
 
         #Run again
-        self.master.after(1000, self.check_for_messages)
+        self.master.after(100, self.check_for_messages)
 
     def deploy_ships(self):
         self.game.ready_count += 1
@@ -385,12 +409,20 @@ class PlayerInstance:
             # update the board. In the future it should be handled by Kafka
             self.send_shot(row, col)
 
+    def on_closing(self):
+        self.game.on_closing()
+        self.game.master.destroy()
+        sys.exit()
+        #self.master.destroy()
 
     def send_shot(self, row, col):
         # here will be the Kafka Supplier Code
         # for now, sending to server instead
         message = "SHOT" + ";" + str(row) + ";" + str(col)
         kafka.kafkaSend(self.player_name, message)
+        #GameLogic.GameLogic.next_turn()
+        #print(self.player_name + " CANT MOVE")
+        self.current_turn = False
         #return self.game.receive(self, row, col, "fire")
 
     def update_enemy_board(self, hit, row, col):

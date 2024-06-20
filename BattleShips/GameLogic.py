@@ -1,7 +1,7 @@
+import sys
 import tkinter as tk
 import KafkaTesting as kafka
 import PlayerInstance as client
-
 
 class GameLogic:
     def __init__(self):
@@ -9,6 +9,12 @@ class GameLogic:
 
         # Show window name
         self.master.title("Battleships")
+
+        # Bind close event
+        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        # Dont show the window
+        self.master.withdraw()
 
         # Here be ship sizes
         self.ships_info = {
@@ -48,7 +54,24 @@ class GameLogic:
         img = tk.Label(self.master, image=image)
         # img.pack()
 
+        self.kafkaThread = kafka.kafkaReceive()
+
         self.master.mainloop()
+
+    def on_closing(self):
+
+        self.kafkaThread.stop()  # Stop the consumer thread
+        self.kafkaThread.join()  # Wait for the thread to finish
+
+        print("closed 1")
+        self.master.destroy()
+        sys.exit()
+        print("closed 2")
+        self.player1.master.destroy()
+        print("closed 3")
+        self.player2.master.destroy()
+        print("closed 4")
+        sys.exit()
 
     def check_ready(self):
         if self.ready_count == 2:
@@ -57,12 +80,12 @@ class GameLogic:
     def next_turn(self):
         if self.current_turn == 1:
             self.current_turn = 2
-            self.player1.current_player = False
-            self.player2.current_player = True
+            self.player1.current_turn = False
+            self.player2.current_turn = True
         else:
             self.current_turn = 1
-            self.player1.current_player = True
-            self.player2.current_player = False
+            self.player1.current_turn = True
+            self.player2.current_turn = False
 
     # def receive(self, player, row, col, info):
     #     # target player is the enemy of the player who sent the info
