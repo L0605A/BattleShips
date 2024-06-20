@@ -1,4 +1,5 @@
 import tkinter as tk
+import KafkaTesting as kafka
 from tkinter import messagebox
 
 
@@ -80,6 +81,12 @@ class PlayerInstance:
             self.game.player1_ready.set()
         elif self.player_name == "Player 2":
             self.game.player2_ready.set()
+
+    def check_win(self):
+        for row in self.player_board:
+            if any(cell != ' ' and cell != '~' and cell != '*' for cell in row):
+                return False
+        return True
 
     def create_deploy_screen(self):
         # Make the frame
@@ -379,27 +386,12 @@ class PlayerInstance:
             self.send_shot(row, col)
 
 
-            # # Handle misses
-            # if board[row][col] == ' ':
-            #     board[row][col] = '~'
-            #     self.buttons[row][col].config(text='O', bg='red', state='disabled')
-            # 
-            # # Handle hits
-            # else:
-            #     board[row][col] = '*'
-            #     self.buttons[row][col].config(text='X', bg='green', state='disabled')
-            # 
-            # # Handle wins
-            # if check_win(board):
-            #     messagebox.showinfo("Game Over", f"Player {self.player_name} wins!")
-            #     self.master.quit()
-            # else:
-            #     self.game.next_turn()
-
     def send_shot(self, row, col):
         # here will be the Kafka Supplier Code
         # for now, sending to server instead
-        return self.game.receive(self, row, col, "fire")
+        message = "SHOT" + ";" + str(row) + ";" + str(col)
+        kafka.kafkaSend(self.player_name, message)
+        #return self.game.receive(self, row, col, "fire")
 
     def update_enemy_board(self, hit, row, col):
         if hit:
