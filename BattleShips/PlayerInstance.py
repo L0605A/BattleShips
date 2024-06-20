@@ -2,12 +2,6 @@ import tkinter as tk
 from tkinter import messagebox
 
 
-def check_win(board):
-    for row in board:
-        if any(cell != ' ' and cell != '~' and cell != '*' for cell in row):
-            return False
-    return True
-
 
 def get_image(path):
     image = tk.PhotoImage(file=path)
@@ -241,6 +235,7 @@ class PlayerInstance:
                     button.grid(row=row, column=col+15)
                     self.enemy_buttons[row - 1] = self.enemy_buttons[row - 1] or []
                     self.enemy_buttons[row - 1].append(button)
+        print("displayed enemy board")
 
     def show_game_boards(self):
         # Enable all buttons
@@ -266,6 +261,48 @@ class PlayerInstance:
         self.display_enemy_bard()
         # here should be Supplier loop, so we can get hit/miss and shots info from the other player
         # within here, we access update_enemy_board and receive_shot methods depending on the message received
+        print("to check")
+        self.check_for_messages()
+
+
+    def check_for_messages(self):
+        print("waiting for kafka..")
+        messageData = kafka.kafkaRecieve()
+
+        if messageData and messageData["Player"] and messageData["Move"]:
+
+            player = messageData["Player"]
+            move = messageData["Move"].split(";")
+
+            print("Message received: player: " + player + " move: " + move)
+
+            move_cmd = move[0]
+            move_row = int(move[1])
+            move_col = int(move[2])
+
+            if player != self.player_name:
+                if move_cmd == "WIN":
+                    messagebox.showinfo("Game Over", f"Player {player} wins!")
+                    # display who won
+                elif move_cmd.startsWith("HIT"):
+                    # modify our board accordingly
+                    self.update_enemy_board(True, move_row, move_col)
+                elif move_cmd.startsWith("MISS"):
+                    # modify our board accordingly
+                    self.update_enemy_board(False, move_row, move_col)
+                elif move_cmd.startsWith("SHOT"):
+                    # Recieved info
+                    self.own_buttons[move_row][move_col].config(state='disabled')
+                    val = self.player_board[move_row][move_col] != ' '
+                    cmd = "HIT" if val else "MISS"
+                    if self.check_win():
+                        cmd = "WIN"
+                    kafka.kafkaSend(self.player_name, cmd + ";" + move_row + ";" + move_col)
+            else:
+                print("No message")
+
+        #Run again
+        self.master.after(1000, self.check_for_messages)
 
     def deploy_ships(self):
         self.game.ready_count += 1
@@ -339,8 +376,7 @@ class PlayerInstance:
             # the player responds with hit/miss and updates their board.
             # server then returns the hit/miss to the current player, so he can too 
             # update the board. In the future it should be handled by Kafka
-            hit = self.send_shot(row, col)
-            self.update_enemy_board(hit, row, col)
+            self.send_shot(row, col)
 
 
             # # Handle misses
@@ -365,12 +401,6 @@ class PlayerInstance:
         # for now, sending to server instead
         return self.game.receive(self, row, col, "fire")
 
-    def receive_shot(self, row, col):
-        # disabling the tile, so we know where enemy has already shot
-        self.own_buttons[row][col].config(state='disabled')
-        # here checking if were hit
-        # should be sending info via Kafka instead
-        return self.player_board[row][col] != ' '
     def update_enemy_board(self, hit, row, col):
         if hit:
             self.enemy_buttons[row][col].config(image=self.error_tile)

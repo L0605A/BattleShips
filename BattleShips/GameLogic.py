@@ -63,26 +63,27 @@ class GameLogic:
             self.player1.current_player = True
             self.player2.current_player = False
 
-    def receive(self, player, row, col, info):
-        # target player is the enemy of the player who sent the info
-        if player == self.player1:
-            target = self.player2
-        else:
-            target = self.player1
-        # there is no other info cause of the return values. If we ere operating on Kafka,
-        # the other type would be hit/miss or win
-        if info == "fire":
-            hit = target.receive_shot(row, col)
-            print(hit)
-            return hit
+    # def receive(self, player, row, col, info):
+    #     # target player is the enemy of the player who sent the info
+    #     if player == self.player1:
+    #         target = self.player2
+    #     else:
+    #         target = self.player1
+    #     # there is no other info cause of the return values. If we ere operating on Kafka,
+    #     # the other type would be hit/miss or win
+    #     if info == "fire":
+    #         hit = target.receive_shot(row, col)
+    #         print(hit)
+    #         return hit
+
 
     def start_game(self):
+        # set game phase to the shooting
+        self.phase = 2
+
         # easier way of setting the first turn :)
         self.current_turn = 2
         self.next_turn()
-
-        # set game phase to the shooting
-        self.phase = 2
 
         # change player boards from setup to the gaming ones
         self.player1.start_game()
